@@ -1,24 +1,29 @@
+import { useState, useEffect } from 'react'
+import AuthBar from './auth/AuthBar'
+import ProgressMap from './ProgressMap'
+import { loadProgress } from '../lib/supabase'
+
 const TILES = [
   {
     id: 'reading',
     label: 'Reading',
-    sub: 'Coming soon',
+    sub: 'Short passages, real comprehension',
     icon: '📖',
-    active: false,
+    active: true,
   },
   {
     id: 'listening',
     label: 'Listening',
-    sub: 'Coming soon',
+    sub: 'Hear Camille, prove you understood',
     icon: '🎧',
-    active: false,
+    active: true,
   },
   {
     id: 'writing',
     label: 'Writing',
-    sub: 'Coming soon',
+    sub: 'Translate it yourself',
     icon: '✍️',
-    active: false,
+    active: true,
   },
   {
     id: 'speaking',
@@ -29,13 +34,19 @@ const TILES = [
   },
 ]
 
-export default function Landing({ onSelectSkill }) {
+export default function Landing({ onSelectSkill, session }) {
+  const [progress, setProgress] = useState(null)
+
+  useEffect(() => { loadProgress(session).then(setProgress) }, [session])
+
   return (
     <div style={styles.page}>
       <header style={styles.header}>
         <h1 style={styles.logo}>FrenchFry</h1>
         <p style={styles.tagline}>Learn French with a companion who actually listens</p>
       </header>
+
+      <AuthBar session={session} />
 
       <div style={styles.grid}>
         {TILES.map(tile => (
@@ -61,6 +72,8 @@ export default function Landing({ onSelectSkill }) {
       </div>
 
       <p style={styles.footer}>Preparing for TEF Canada? Start with Speaking — it's where the real score gains hide.</p>
+
+      <ProgressMap progress={progress} />
     </div>
   )
 }

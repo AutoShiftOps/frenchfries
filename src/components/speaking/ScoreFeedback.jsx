@@ -1,63 +1,113 @@
+import { useEffect } from 'react'
+import { motion, AnimatePresence, useReducedMotion, useMotionValue, useTransform, animate } from 'framer-motion'
+
 function scoreColor(score) {
   if (score >= 80) return 'var(--sage-deep)'
   if (score >= 60) return 'var(--gold)'
   return 'var(--terracotta-deep)'
 }
 
-function scoreLabel(score) {
-  if (score >= 80) return 'Strong'
-  if (score >= 60) return 'Good progress'
-  return 'Needs work'
+export default function ScoreFeedback({ result, onShowCorrection }) {
+  const reduceMotion = useReducedMotion()
+
+  return (
+    <AnimatePresence mode="wait">
+      {result && !result.recognized && (
+        <motion.div
+          key="not-recognized"
+          style={styles.box}
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0 }}
+          transition={{ type: 'spring', stiffness: 220, damping: 22 }}
+        >
+          <p style={styles.notRecognized}>{result.message}</p>
+        </motion.div>
+      )}
+
+      {result?.recognized && (
+        <Scored key={`scored-${result.recognizedText}-${result.accuracyScore}`} result={result} onShowCorrection={onShowCorrection} reduceMotion={reduceMotion} />
+      )}
+    </AnimatePresence>
+  )
 }
 
-export default function ScoreFeedback({ result, onShowCorrection }) {
-  if (!result) return null
-
-  if (!result.recognized) {
-    return (
-      <div style={styles.box}>
-        <p style={styles.notRecognized}>{result.message}</p>
-      </div>
-    )
-  }
-
+function Scored({ result, onShowCorrection, reduceMotion }) {
   const { accuracyScore, fluencyScore, prosodyScore, words } = result
   const weakWords = (words || []).filter(w => w.accuracyScore !== null && w.accuracyScore < 70)
 
   return (
-    <div style={styles.box}>
+    <motion.div
+      style={styles.box}
+      initial={{ opacity: 0, y: 12, scale: 0.97 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.97 }}
+      transition={{ type: 'spring', stiffness: 220, damping: 20 }}
+    >
       <div style={styles.scoresRow}>
-        <ScorePill label="Accuracy" value={accuracyScore} />
-        <ScorePill label="Fluency" value={fluencyScore} />
-        <ScorePill label="Prosody" value={prosodyScore} />
+        <ScorePill label="Accuracy" value={accuracyScore} delay={0} reduceMotion={reduceMotion} />
+        <ScorePill label="Fluency" value={fluencyScore} delay={0.08} reduceMotion={reduceMotion} />
+        <ScorePill label="Prosody" value={prosodyScore} delay={0.16} reduceMotion={reduceMotion} />
       </div>
 
       {weakWords.length > 0 ? (
-        <div style={styles.correctionSection}>
+        <motion.div
+          style={styles.correctionSection}
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3, type: 'spring', stiffness: 220, damping: 22 }}
+        >
           <p style={styles.correctionIntro}>
             One thing to fix: <strong style={styles.weakWord}>{weakWords[0].word}</strong>
           </p>
-          <button
+          <motion.button
             onClick={() => onShowCorrection(weakWords[0])}
             style={styles.correctionBtn}
+            whileHover={{ x: 3 }}
+            whileTap={{ scale: 0.96 }}
           >
             See mouth position →
-          </button>
-        </div>
+          </motion.button>
+        </motion.div>
       ) : (
-        <p style={styles.allGood}>Nice — every word landed clearly.</p>
+        <motion.p
+          style={styles.allGood}
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3, type: 'spring', stiffness: 220, damping: 22 }}
+        >
+          Nice — every word landed clearly.
+        </motion.p>
       )}
-    </div>
+    </motion.div>
   )
 }
 
-function ScorePill({ label, value }) {
-  const v = value ?? 0
+function ScorePill({ label, value, delay, reduceMotion }) {
+  const target = value ?? 0
+  const count = useMotionValue(0)
+  const rounded = useTransform(count, v => Math.round(v))
+
+  useEffect(() => {
+    if (reduceMotion) {
+      count.set(target)
+      return
+    }
+    const controls = animate(count, target, { duration: 0.9, delay, ease: [0.16, 1, 0.3, 1] })
+    return controls.stop
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [target, delay])
+
   return (
-    <div style={styles.pill}>
-      <span style={{ ...styles.pillValue, color: scoreColor(v) }}>{Math.round(v)}</span>
+    <motion.div
+      style={styles.pill}
+      initial={{ opacity: 0, y: 10, scale: 0.9 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ delay, type: 'spring', stiffness: 260, damping: 18 }}
+    >
+      <motion.span style={{ ...styles.pillValue, color: scoreColor(target) }}>{rounded}</motion.span>
       <span style={styles.pillLabel}>{label}</span>
-    </div>
+    </motion.div>
   )
 }
 

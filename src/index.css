@@ -1,15 +1,32 @@
 :root {
-  --cream: #fbf6ee;
-  --cream-deep: #f2e9d8;
-  --ink: #2b2420;
-  --ink-soft: #6b6157;
-  --terracotta: #c96a4a;
-  --terracotta-deep: #a3502f;
-  --sage: #7c8f6e;
-  --sage-deep: #5c6e4f;
-  --gold: #d9a441;
-  --line: #e4d9c4;
-  --white: #ffffff;
+  /* "Midnight & coral" — confirmed direction, replacing the earlier
+     cream/terracotta palette. Token NAMES are kept as-is (cream, white,
+     ink, ...) so every existing component reskins automatically through
+     these variables; only the resolved colors changed. --white is now
+     the dark elevated-surface color (cards, chips) rather than literal
+     white — read it as "surface", not "white". */
+  --cream: #14172b;
+  --cream-deep: #1e2240;
+  --ink: #f4f1e8;
+  --ink-soft: #8b86ac;
+  --terracotta: #ff6b5b;
+  --terracotta-deep: #ff8a75;
+  --sage: #6fcf97;
+  --sage-deep: #4fae7a;
+  --gold: #f2c14e;
+  --line: rgba(255, 255, 255, 0.12);
+  --white: #1e2240;
+  --paper: #ffffff; /* literal white — Camille's eyes/teeth, never a surface bg */
+
+  /* Camille — illustrated figure palette */
+  --skin: #e7b58c;
+  --skin-shade: #c98f61;
+  --hair: #7a3d28;
+  --hair-shade: #5e2e1d;
+  --garment: #5c6e4f;
+  --iris: #8a5a34;
+  --lips: #b95c46;
+  --blush: #e0836a;
 
   --font-display: 'Fraunces', Georgia, serif;
   --font-body: 'Inter', -apple-system, sans-serif;
