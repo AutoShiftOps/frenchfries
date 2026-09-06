@@ -8,6 +8,8 @@ import ReadingPractice from './components/reading/ReadingPractice'
 import ListeningPractice from './components/listening/ListeningPractice'
 import WritingPractice from './components/writing/WritingPractice'
 import AmbientBackground from './components/AmbientBackground'
+import ExamPractice from './components/exams/ExamPractice'
+import Leaderboard from './components/Leaderboard'
 import { migrateAnonProgressToAccount } from './lib/supabase'
 
 const MODULES = {
@@ -33,7 +35,13 @@ export default function App() {
   const session = useMemo(() => {
     if (!isLoaded || !isSignedIn || !user) return null
     return {
-      user: { id: user.id, email: user.primaryEmailAddress?.emailAddress ?? '' },
+      user: {
+        id: user.id,
+        email: user.primaryEmailAddress?.emailAddress ?? '',
+        // Leaderboard display name — first name only, never the email,
+        // falling back gracefully if Clerk has no name on file yet.
+        firstName: user.firstName || user.primaryEmailAddress?.emailAddress?.split('@')[0] || 'Learner',
+      },
       getToken,
     }
   }, [isLoaded, isSignedIn, user, getToken])
@@ -74,9 +82,10 @@ export default function App() {
           footer that never moves. */}
       <div style={{ height: '100dvh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
-          {tab === 'path'
-            ? <PathHome onSelectSkill={setActiveSkill} session={session} />
-            : <YouTab session={session} />}
+          {tab === 'path' && <PathHome onSelectSkill={setActiveSkill} session={session} />}
+          {tab === 'exams' && <ExamPractice session={session} />}
+          {tab === 'board' && <Leaderboard session={session} />}
+          {tab === 'you' && <YouTab session={session} />}
         </div>
         <BottomNav tab={tab} onSelectTab={setTab} />
       </div>

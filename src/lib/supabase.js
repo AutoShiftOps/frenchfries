@@ -174,6 +174,15 @@ export async function saveAttempt({ session, module = 'speaking', chapterId, phr
     })
 
   if (upsertError) console.error('progress upsert error:', upsertError)
+
+  // 3. Keep the public leaderboard row current — total count only, no
+  // detail. `session.user.firstName` comes from App.jsx's narrowed
+  // Clerk session shape; best-effort, never blocks the attempt itself.
+  upsertLeaderboardEntry({
+    session,
+    displayName: session.user.firstName,
+    totalCompleted: Object.keys(completedPhrases).length,
+  })
 }
 
 /**
@@ -188,4 +197,105 @@ export function completedForModule(progress, module) {
     if (key.startsWith(prefix)) out[key.slice(prefix.length)] = all[key]
   }
   return out
+}
+
+// ── Leaderboard ───────────────────────────────────────────────────────
+// Public read (see supabase_migration_v6.sql), owner-only write. A
+// denormalized row per learner rather than a live cross-user aggregate,
+// since the per-user-scoped RLS client can't do that kind of query
+// anyway. Anonymous learners are simply absent — there's no account to
+// rank, and their local-only progress was never meant to be public.
+
+/**
+ * Upserts the caller's own leaderboard row with a fresh total-completed
+ * count. Call this after saveAttempt (signed-in case only) so the board
+ * stays current without a separate sync job. Silently no-ops if signed
+ * out — nothing to attribute a public row to.
+ */
+export async function upsertLeaderboardEntry({ session, displayName, totalCompleted }) {
+  if (!session) return
+  const { error } = await supabase.from('frenchfry_leaderboard').upsert({
+    user_id: session.user.id,
+    display_name: displayName || 'Learner',
+    total_completed: totalCompleted,
+    updated_at: new Date().toISOString(),
+  })
+  if (error) console.error('upsertLeaderboardEntry error:', error)
+}
+
+/**
+ * Top `limit` learners by total completed phrases, most first. Readable
+ * whether or not the caller is signed in (the table's SELECT policy is
+ * public) — the leaderboard is meant to be seen before signing up, same
+ * spirit as the anonymous "glimpse".
+ */
+export async function loadLeaderboard(limit = 20) {
+  const { data, error } = await supabase
+    .from('frenchfry_leaderboard')
+    .select('user_id, display_name, total_completed')
+    .order('total_completed', { ascending: false })
+    .limit(limit)
+  if (error) {
+    console.error('loadLeaderboard error:', error)
+    return []
+  }
+  return data || []
+}
+
+// ── Practice exam results ────────────────────────────────────────────
+// Best score per (user, exam set) — private, same ownership pattern as
+// progress/attempts. Anonymous attempts keep their score in localStorage
+// only, alongside the rest of the anonymous "glimpse" state.
+
+const ANON_EXAM_KEY = 'ff_anon_exam_scores'
+
+function readAnonExamScores() {
+  try {
+    const raw = localStorage.getItem(ANON_EXAM_KEY)
+    return raw ? JSON.parse(raw) : {}
+  } catch {
+    return {}
+  }
+}
+
+function writeAnonExamScores(data) {
+  try { localStorage.setItem(ANON_EXAM_KEY, JSON.stringify(data)) } catch { /* best-effort */ }
+}
+
+export async function saveExamResult(session, examId, scorePct) {
+  if (!session) {
+    const scores = readAnonExamScores()
+    scores[examId] = Math.max(scores[examId] || 0, scorePct)
+    writeAnonExamScores(scores)
+    return
+  }
+  const { data: existing } = await supabase
+    .from('frenchfry_exam_results')
+    .select('score_pct')
+    .eq('user_id', session.user.id)
+    .eq('exam_id', examId)
+    .maybeSingle()
+
+  const best = Math.max(existing?.score_pct || 0, scorePct)
+  const { error } = await supabase.from('frenchfry_exam_results').upsert({
+    user_id: session.user.id,
+    exam_id: examId,
+    score_pct: best,
+    updated_at: new Date().toISOString(),
+  })
+  if (error) console.error('saveExamResult error:', error)
+}
+
+/** { [examId]: bestScorePct } for every exam the learner has attempted. */
+export async function loadExamResults(session) {
+  if (!session) return readAnonExamScores()
+  const { data, error } = await supabase
+    .from('frenchfry_exam_results')
+    .select('exam_id, score_pct')
+    .eq('user_id', session.user.id)
+  if (error) {
+    console.error('loadExamResults error:', error)
+    return {}
+  }
+  return Object.fromEntries((data || []).map(r => [r.exam_id, r.score_pct]))
 }

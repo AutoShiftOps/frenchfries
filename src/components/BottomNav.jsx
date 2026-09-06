@@ -1,4 +1,4 @@
-// Two destinations only — everything else is reached by tapping into the
+// Four destinations — everything else is reached by tapping into the
 // path itself, so there is never a menu to get lost in.
 export default function BottomNav({ tab, onSelectTab }) {
   return (
@@ -8,6 +8,18 @@ export default function BottomNav({ tab, onSelectTab }) {
           <path d="M6 21V4" /><path d="M6 4h11l-3 4 3 4H6" />
         </svg>
         <span style={{ ...styles.label, color: tab === 'path' ? 'var(--terracotta)' : 'var(--ink-soft)' }}>Path</span>
+      </button>
+      <button onClick={() => onSelectTab('exams')} style={styles.item}>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={tab === 'exams' ? 'var(--terracotta)' : 'var(--ink-soft)'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" />
+        </svg>
+        <span style={{ ...styles.label, color: tab === 'exams' ? 'var(--terracotta)' : 'var(--ink-soft)' }}>Exams</span>
+      </button>
+      <button onClick={() => onSelectTab('board')} style={styles.item}>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={tab === 'board' ? 'var(--terracotta)' : 'var(--ink-soft)'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M8 21h8" /><path d="M12 17v4" /><path d="M7 4h10v5a5 5 0 01-10 0V4z" /><path d="M7 6H4a1 1 0 00-1 1 4 4 0 004 4M17 6h3a1 1 0 011 1 4 4 0 01-4 4" />
+        </svg>
+        <span style={{ ...styles.label, color: tab === 'board' ? 'var(--terracotta)' : 'var(--ink-soft)' }}>Board</span>
       </button>
       <button onClick={() => onSelectTab('you')} style={styles.item}>
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={tab === 'you' ? 'var(--terracotta)' : 'var(--ink-soft)'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
