@@ -249,7 +249,7 @@ export default function ExamPractice({ session }) {
 
 const styles = {
   page: {
-    maxWidth: 480,
+    maxWidth: 640,
     margin: '0 auto',
     padding: '24px 20px 60px',
   },

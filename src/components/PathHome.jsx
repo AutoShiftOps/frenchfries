@@ -20,18 +20,24 @@ const MODULE_LABEL = { speaking: 'Speaking', reading: 'Reading', listening: 'Lis
 const PATH_WIDTH = 320
 const PATH_HEIGHT = 720
 
-// Six CEFR checkpoints, aspirational destination at the top down to the
-// current level near the bottom — static because the ladder's shape
-// never changes, only which one is "current" does. y starts at 60, not
-// 0, so a label sitting above the topmost node still has clearance
-// instead of clipping off the top of the canvas.
+// Six CEFR checkpoints, current level at the top down to the
+// aspirational destination near the bottom — the reverse of the
+// original top-down "climb toward the summit" ordering, flipped so the
+// path reads in the same direction as the rest of the page: the "today"
+// card right above it already puts your current level and next action
+// first, so the path continuing top-to-bottom from "where you are" to
+// "where you're headed" reads as one continuous line instead of
+// doubling back. Static because the ladder's shape never changes, only
+// which one is "current" does. y starts at 60, not 0, so a label
+// sitting above the topmost node still has clearance instead of
+// clipping off the top of the canvas.
 const NODE_POS = [
-  { x: 210, y: 60 },   // C2
-  { x: 110, y: 150 },  // C1
-  { x: 210, y: 240 },  // B2 — milestone, given more visual room
-  { x: 110, y: 330 },  // B1
-  { x: 210, y: 420 },  // A2
-  { x: 110, y: 510 },  // A1
+  { x: 210, y: 60 },   // A1
+  { x: 110, y: 150 },  // A2
+  { x: 210, y: 240 },  // B1
+  { x: 110, y: 330 },  // B2 — milestone, given more visual room
+  { x: 210, y: 420 },  // C1
+  { x: 110, y: 510 },  // C2
 ]
 
 // A smooth vertical S-curve between each consecutive pair of nodes —
@@ -88,9 +94,10 @@ export default function PathHome({ onSelectSkill, session }) {
     return out
   }, [progress, currentId])
 
-  // Render top (aspirational, C2) to bottom (current position) — the
-  // ladder itself is ordered A1→C2, so this list is its reverse.
-  const displayLevels = useMemo(() => [...ladder].reverse(), [ladder])
+  // Render top (current position) to bottom (aspirational, C2) — the
+  // ladder itself is already ordered A1→C2, so no reversal needed here
+  // (NODE_POS above is what was flipped).
+  const displayLevels = useMemo(() => ladder, [ladder])
   const currentDisplayIndex = displayLevels.findIndex(l => l.id === currentId)
   const currentPos = NODE_POS[currentDisplayIndex] ?? NODE_POS[NODE_POS.length - 1]
 
@@ -116,6 +123,50 @@ export default function PathHome({ onSelectSkill, session }) {
         <span style={styles.clbBadge}>&asymp; {ladder.find(l => l.id === PR_MILESTONE_LEVEL)?.clb}</span>
       </motion.div>
 
+      {/* The actionable part of this screen — moved above the path
+          graphic on purpose. The S-curve below is tall (a fixed 720px
+          canvas so nodes and the drawn trail always line up), so on a
+          normal screen its "you are here" node and the module chips
+          used to sit below the fold — a learner landing on the app saw
+          only the destination card and an empty-looking curve until
+          they scrolled. This card is reachable with zero scrolling; the
+          path below is now purely the "journey so far" visual. */}
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1, duration: 0.35 }}
+        style={styles.todayCard}
+      >
+        <p style={styles.todayEyebrow}>{currentId} &middot; today</p>
+        <div style={styles.moduleRow}>
+          {MODULES.map(m => {
+            const { done, total } = moduleCounts[m]
+            const isTarget = continueTarget?.module === m
+            return (
+              <button key={m} onClick={() => onSelectSkill(m)} style={styles.moduleChipWrap}>
+                <div style={{ ...styles.moduleChip, ...(isTarget ? styles.moduleChipActive : {}) }}>
+                  <ModuleIcon id={m} color={isTarget ? 'var(--cream)' : 'var(--ink)'} />
+                </div>
+                <span style={styles.moduleLabel}>{MODULE_LABEL[m]}</span>
+                <span style={styles.moduleCount}>{done}/{total}</span>
+              </button>
+            )
+          })}
+        </div>
+
+        {continueTarget ? (
+          <button onClick={() => onSelectSkill(continueTarget.module)} style={styles.ctaBtn}>
+            <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 1 }}>
+              <span style={styles.ctaEyebrow}>Continue &middot; {MODULE_LABEL[continueTarget.module]}</span>
+              <span style={styles.ctaTitle}>{continueTarget.chapterTitle}</span>
+            </span>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--cream)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 5l7 7-7 7" /></svg>
+          </button>
+        ) : (
+          <p style={styles.allDone}>Every {currentId} chapter is done — beautiful work. The next level unlocks here as soon as it's built.</p>
+        )}
+      </motion.div>
+
       <div style={styles.pathArea}>
         {/* A soft, static glow anchored on the current position — depth
             cue, not motion, so it reads as "you're lit up here" rather
@@ -124,8 +175,14 @@ export default function PathHome({ onSelectSkill, session }) {
 
         <svg width={PATH_WIDTH} height={PATH_HEIGHT} viewBox={`0 0 ${PATH_WIDTH} ${PATH_HEIGHT}`} style={styles.pathSvg}>
           {SEGMENTS.map((d, i) => {
-            const lowerLevel = displayLevels[i + 1]
-            const lit = lowerLevel && (lowerLevel.status === 'complete' || lowerLevel.status === 'current')
+            // Segment i runs from node i (higher up the canvas, earlier
+            // in the ladder — now the "already walked" side since
+            // current sits at the top) down to node i+1. Lit when the
+            // upper node is complete or current, i.e. the trail is solid
+            // from A1 down through wherever you currently stand, and
+            // dashed for everything still ahead below that.
+            const upperLevel = displayLevels[i]
+            const lit = upperLevel && (upperLevel.status === 'complete' || upperLevel.status === 'current')
             return (
               <motion.path
                 key={i}
@@ -151,51 +208,41 @@ export default function PathHome({ onSelectSkill, session }) {
           const isMilestone = level.id === PR_MILESTONE_LEVEL
 
           if (isCurrent) {
+            // Framer-motion takes ownership of the CSS `transform` property
+            // on any element it animates scale/x/y on — a plain
+            // `transform: 'translate(-50%,-50%)'` string passed through
+            // `style` gets silently dropped the moment `animate` includes
+            // scale or y, leaving the element positioned by its top-left
+            // corner instead of centered (this was the "path seems broken
+            // and misaligned" bug: the node visually detached from the
+            // curve's start point). Fix: keep the centering transform on a
+            // plain, unanimated wrapper div — exactly the split the
+            // locked/milestone nodes below already use — and let the
+            // motion element itself own only the animation.
             return (
               <div key={level.id}>
-                <motion.div
-                  initial={{ scale: 0.7, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  transition={{ type: 'spring', stiffness: 200, damping: 16 }}
-                  style={{ ...styles.nodeCurrent, left: pos.x, top: pos.y }}
-                >
-                  <div style={styles.nodeCurrentInner}>
-                    <span style={styles.nodeCurrentLabel}>{level.id}</span>
-                  </div>
-                </motion.div>
-                <motion.span
-                  initial={{ opacity: 0, y: -4 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.4, duration: 0.3 }}
-                  style={{ ...styles.hereBadge, left: pos.x, top: pos.y + 58 }}
-                >
-                  &#9679;&nbsp; You are here
-                </motion.span>
-
-                <motion.div
-                  initial={{ opacity: 0, y: 6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.55, duration: 0.35 }}
-                  style={{ ...styles.moduleCluster, top: pos.y + 104 }}
-                >
-                  {MODULES.map(m => {
-                    const { done, total } = moduleCounts[m]
-                    const isTarget = continueTarget?.module === m
-                    return (
-                      <button
-                        key={m}
-                        onClick={() => onSelectSkill(m)}
-                        style={styles.moduleChipWrap}
-                      >
-                        <div style={{ ...styles.moduleChip, ...(isTarget ? styles.moduleChipActive : {}) }}>
-                          <ModuleIcon id={m} color={isTarget ? 'var(--cream)' : 'var(--ink)'} />
-                        </div>
-                        <span style={styles.moduleLabel}>{MODULE_LABEL[m]}</span>
-                        <span style={styles.moduleCount}>{done}/{total}</span>
-                      </button>
-                    )
-                  })}
-                </motion.div>
+                <div style={{ position: 'absolute', left: pos.x, top: pos.y, transform: 'translate(-50%,-50%)' }}>
+                  <motion.div
+                    initial={{ scale: 0.7, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ type: 'spring', stiffness: 200, damping: 16 }}
+                    style={styles.nodeCurrent}
+                  >
+                    <div style={styles.nodeCurrentInner}>
+                      <span style={styles.nodeCurrentLabel}>{level.id}</span>
+                    </div>
+                  </motion.div>
+                </div>
+                <div style={{ position: 'absolute', left: pos.x, top: pos.y + 58, transform: 'translateX(-50%)' }}>
+                  <motion.span
+                    initial={{ opacity: 0, y: -4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.4, duration: 0.3 }}
+                    style={styles.hereBadge}
+                  >
+                    &#9679;&nbsp; You are here
+                  </motion.span>
+                </div>
               </div>
             )
           }
@@ -249,27 +296,13 @@ export default function PathHome({ onSelectSkill, session }) {
           )
         })}
       </div>
-
-      {continueTarget ? (
-        <div style={styles.ctaWrap}>
-          <button onClick={() => onSelectSkill(continueTarget.module)} style={styles.ctaBtn}>
-            <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 1 }}>
-              <span style={styles.ctaEyebrow}>Continue &middot; {MODULE_LABEL[continueTarget.module]}</span>
-              <span style={styles.ctaTitle}>{continueTarget.chapterTitle}</span>
-            </span>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--cream)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 5l7 7-7 7" /></svg>
-          </button>
-        </div>
-      ) : (
-        <p style={styles.allDone}>Every A1 chapter is done — beautiful work. The next level unlocks here as soon as it's built.</p>
-      )}
     </div>
   )
 }
 
 const styles = {
   page: {
-    maxWidth: 480,
+    maxWidth: 640,
     margin: '0 auto',
     padding: '24px 20px 20px',
     position: 'relative',
@@ -318,6 +351,27 @@ const styles = {
     borderRadius: 999,
     padding: '4px 9px',
   },
+  todayCard: {
+    marginTop: 14,
+    background: 'var(--white)',
+    border: '1px solid var(--line)',
+    borderRadius: 'var(--radius-md)',
+    padding: '16px 16px 14px',
+  },
+  todayEyebrow: {
+    fontSize: 11,
+    fontWeight: 700,
+    letterSpacing: '0.06em',
+    textTransform: 'uppercase',
+    color: 'var(--ink-soft)',
+    margin: '0 0 12px',
+  },
+  moduleRow: {
+    display: 'flex',
+    justifyContent: 'center',
+    gap: 14,
+    marginBottom: 16,
+  },
   pathArea: {
     position: 'relative',
     marginTop: 4,
@@ -342,8 +396,10 @@ const styles = {
     left: 0,
   },
   nodeCurrent: {
-    position: 'absolute',
-    transform: 'translate(-50%,-50%)',
+    // No position/left/top/transform here — framer-motion owns this
+    // element's transform (it animates scale), so centering now lives on
+    // the plain wrapper div in the render method instead. See the
+    // comment at the isCurrent branch above.
     width: 78,
     height: 78,
     borderRadius: '50%',
@@ -369,8 +425,9 @@ const styles = {
     color: 'var(--cream)',
   },
   hereBadge: {
-    position: 'absolute',
-    transform: 'translateX(-50%)',
+    // No position/left/top/transform here — same reason as nodeCurrent
+    // above (framer-motion animates opacity/y on this element, so it
+    // owns transform); centering lives on the wrapper div instead.
     fontSize: 11,
     fontWeight: 700,
     color: 'var(--terracotta-deep)',
@@ -379,14 +436,6 @@ const styles = {
     borderRadius: 999,
     padding: '3px 10px',
     whiteSpace: 'nowrap',
-  },
-  moduleCluster: {
-    position: 'absolute',
-    left: 0,
-    width: '100%',
-    display: 'flex',
-    justifyContent: 'center',
-    gap: 9,
   },
   moduleChipWrap: {
     border: 'none',
@@ -473,9 +522,6 @@ const styles = {
     fontSize: 10,
     fontWeight: 700,
     whiteSpace: 'nowrap',
-  },
-  ctaWrap: {
-    marginTop: 20,
   },
   ctaBtn: {
     width: '100%',

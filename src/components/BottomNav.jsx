@@ -2,7 +2,7 @@
 // path itself, so there is never a menu to get lost in.
 export default function BottomNav({ tab, onSelectTab }) {
   return (
-    <div style={styles.bar}>
+    <div className="bottom-nav" style={styles.bar}>
       <button onClick={() => onSelectTab('path')} style={styles.item}>
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={tab === 'path' ? 'var(--terracotta)' : 'var(--ink-soft)'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M6 21V4" /><path d="M6 4h11l-3 4 3 4H6" />
@@ -33,9 +33,12 @@ export default function BottomNav({ tab, onSelectTab }) {
 
 const styles = {
   bar: {
+    // No `display` here on purpose — .bottom-nav in index.css owns
+    // display (flex by default on mobile, none at >=900px where the
+    // Sidebar takes over). An inline `display` would always win over
+    // that media query and keep this bar showing at desktop widths too.
     position: 'sticky',
     bottom: 0,
-    display: 'flex',
     borderTop: '1px solid var(--line)',
     background: 'var(--white)',
     padding: '10px 40px 18px',

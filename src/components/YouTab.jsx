@@ -22,7 +22,7 @@ export default function YouTab({ session }) {
 
 const styles = {
   page: {
-    maxWidth: 480,
+    maxWidth: 640,
     margin: '0 auto',
     padding: '28px 20px 24px',
   },

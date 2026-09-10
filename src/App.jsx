@@ -10,6 +10,8 @@ import WritingPractice from './components/writing/WritingPractice'
 import AmbientBackground from './components/AmbientBackground'
 import ExamPractice from './components/exams/ExamPractice'
 import Leaderboard from './components/Leaderboard'
+import Sidebar from './components/Sidebar'
+import SummaryPanel from './components/SummaryPanel'
 import { migrateAnonProgressToAccount } from './lib/supabase'
 
 const MODULES = {
@@ -55,6 +57,13 @@ export default function App() {
 
   const ActiveModule = activeSkill ? MODULES[activeSkill] : null
 
+  // Sidebar (desktop only) stays reachable even while a practice module is
+  // open full-screen — picking a different destination there exits the
+  // module and switches tabs in one step, since there's no other way back
+  // to Exams/Board/You from inside a module on a wide screen (BottomNav,
+  // the mobile equivalent, is hidden at desktop widths).
+  const goToTab = (t) => { setActiveSkill(null); setTab(t) }
+
   // Google sends the browser back here after OAuth — this one path is the
   // exception to the app's "no full-screen wall" rule, since Google's own
   // consent screen is itself an unavoidable redirect away from the app.
@@ -68,7 +77,11 @@ export default function App() {
     return (
       <>
         <AmbientBackground />
-        <ActiveModule onBack={() => setActiveSkill(null)} session={session} />
+        <div className="app-shell">
+          <Sidebar tab={activeSkill} onSelectTab={goToTab} session={session} />
+          <ActiveModule onBack={() => setActiveSkill(null)} session={session} />
+          <SummaryPanel session={session} />
+        </div>
       </>
     )
   }
@@ -76,18 +89,22 @@ export default function App() {
   return (
     <>
       <AmbientBackground />
-      {/* A real app shell: the middle column owns its own scroll, so its
-          sticky "Continue" bar sticks to the bottom of THAT scroll area —
-          never fighting with BottomNav, which sits outside it in a fixed
-          footer that never moves. */}
-      <div style={{ height: '100dvh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
-          {tab === 'path' && <PathHome onSelectSkill={setActiveSkill} session={session} />}
-          {tab === 'exams' && <ExamPractice session={session} />}
-          {tab === 'board' && <Leaderboard session={session} />}
-          {tab === 'you' && <YouTab session={session} />}
+      <div className="app-shell">
+        <Sidebar tab={tab} onSelectTab={goToTab} session={session} />
+        {/* A real app shell: the middle column owns its own scroll, so its
+            sticky "Continue" bar sticks to the bottom of THAT scroll area —
+            never fighting with BottomNav, which sits outside it in a fixed
+            footer that never moves. */}
+        <div style={{ height: '100dvh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
+            {tab === 'path' && <PathHome onSelectSkill={setActiveSkill} session={session} />}
+            {tab === 'exams' && <ExamPractice session={session} />}
+            {tab === 'board' && <Leaderboard session={session} />}
+            {tab === 'you' && <YouTab session={session} />}
+          </div>
+          <BottomNav tab={tab} onSelectTab={setTab} />
         </div>
-        <BottomNav tab={tab} onSelectTab={setTab} />
+        <SummaryPanel session={session} />
       </div>
     </>
   )

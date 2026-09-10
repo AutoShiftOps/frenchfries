@@ -2,9 +2,10 @@ import { useState, useEffect, useMemo, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import LevelSelector from '../speaking/LevelSelector'
 import ChapterList from '../speaking/ChapterList'
-import { ModuleHeader, TopProgress, Pronunciation } from '../shared/ModuleUI'
+import { ModuleHeader, TopProgress, Pronunciation, SubLevelBar } from '../shared/ModuleUI'
 import { CHAPTERS_BY_LEVEL } from '../../data/chaptersByLevel'
 import { buildLevelLadder, currentLevelId } from '../../lib/progressPath'
+import { buildSubLevelLadder, currentSubLevelIndex, annotateChaptersWithSubLevel } from '../../lib/subLevels'
 import { resumeIndexForChapter } from '../../lib/continueTarget'
 import { loadProgress, saveAttempt, completedForModule, canStartChapter, recordChapterStart } from '../../lib/supabase'
 import SignInCard from '../auth/SignInCard'
@@ -33,10 +34,18 @@ export default function WritingPractice({ onBack, session }) {
     if (!userPickedLevel && progressLoaded) setLevel(currentLevelId(ladder))
   }, [progressLoaded, ladder, userPickedLevel])
 
-  const chapters = CHAPTERS_BY_LEVEL[level]?.[MODULE] || []
+  const chaptersByModuleForLevel = CHAPTERS_BY_LEVEL[level] || {}
+  const chapters = chaptersByModuleForLevel[MODULE] || []
+  const subLadder = useMemo(() => buildSubLevelLadder(progress, chaptersByModuleForLevel), [progress, level])
+  const unlockedSubIndex = currentSubLevelIndex(subLadder)
+  const chaptersWithLock = useMemo(
+    () => annotateChaptersWithSubLevel(chapters, unlockedSubIndex),
+    [chapters, unlockedSubIndex]
+  )
   const current = activeChapter?.phrases[index]
 
   const handleSelectChapter = useCallback((chapter) => {
+    if (chapter.locked) return
     if (!canStartChapter(session, MODULE, chapter.id)) {
       setGatedChapter(chapter)
       return
@@ -84,8 +93,9 @@ export default function WritingPractice({ onBack, session }) {
         <button onClick={onBack} style={styles.backBtn}>← Back</button>
         <ModuleHeader title="Writing" subtitle="Translate the prompt into French" accent="var(--ink)" />
         <LevelSelector current={level} onSelect={(id) => { setUserPickedLevel(true); setLevel(id) }} availableLevels={availableLevels} ladder={ladder} accent="var(--ink)" />
+        <SubLevelBar level={level} subLadder={subLadder} accent="var(--ink)" />
         <ChapterList
-          chapters={chapters}
+          chapters={chaptersWithLock}
           completedPhrases={completedForModule(progress, MODULE)}
           onSelectChapter={handleSelectChapter}
           accent="var(--ink)"
@@ -165,7 +175,7 @@ export default function WritingPractice({ onBack, session }) {
 
 const styles = {
   page: {
-    maxWidth: 480,
+    maxWidth: 640,
     margin: '0 auto',
     padding: '24px 20px 60px',
   },

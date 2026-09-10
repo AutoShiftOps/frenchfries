@@ -14,6 +14,41 @@ export function ModuleHeader({ title, subtitle, accent }) {
   )
 }
 
+// A compact "A1.1 · A1.2 · A1.3" row, shown under LevelSelector once a
+// CEFR level is picked — the sub-level ladder that actually gates which
+// chapters below are open, mirroring buildLevelLadder's own visual
+// language (a small dot per checkpoint) at a finer grain. `subLadder` is
+// buildSubLevelLadder's output (lib/subLevels.js): an array of
+// { index, status } in order.
+export function SubLevelBar({ level, subLadder, accent }) {
+  if (!subLadder?.length) return null
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 18, marginTop: -12 }}>
+      {subLadder.map(sub => {
+        const complete = sub.status === 'complete'
+        const locked = sub.status === 'locked'
+        const current = sub.status === 'current'
+        return (
+          <div key={sub.index} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+            <span style={{
+              width: 6, height: 6, borderRadius: '50%',
+              background: complete ? 'var(--sage-deep)' : current ? accent : 'var(--line)',
+              border: locked ? '1px solid var(--line)' : 'none',
+            }} />
+            <span style={{
+              fontSize: 10.5, fontWeight: 700,
+              color: complete ? 'var(--sage-deep)' : current ? accent : 'var(--ink-soft)',
+            }}>
+              {level}.{sub.index + 1}
+            </span>
+            {sub.index < subLadder.length - 1 && <span style={{ color: 'var(--line)', fontSize: 10, marginLeft: 1 }}>&middot;</span>}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 export function TopProgress({ index, total, accent }) {
   return (
     <div style={{ display: 'flex', gap: 6, marginBottom: 24 }}>

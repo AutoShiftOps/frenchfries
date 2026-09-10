@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import { notifyProgressChange } from './progressBus'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
@@ -130,6 +131,7 @@ export async function saveAttempt({ session, module = 'speaking', chapterId, phr
       anon.mistake_log = anon.mistake_log.slice(0, 100)
     }
     writeAnon(anon)
+    notifyProgressChange()
     return
   }
 
@@ -178,11 +180,13 @@ export async function saveAttempt({ session, module = 'speaking', chapterId, phr
   // 3. Keep the public leaderboard row current — total count only, no
   // detail. `session.user.firstName` comes from App.jsx's narrowed
   // Clerk session shape; best-effort, never blocks the attempt itself.
-  upsertLeaderboardEntry({
+  await upsertLeaderboardEntry({
     session,
     displayName: session.user.firstName,
     totalCompleted: Object.keys(completedPhrases).length,
   })
+
+  notifyProgressChange()
 }
 
 /**

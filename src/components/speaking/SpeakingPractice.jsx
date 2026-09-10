@@ -7,6 +7,8 @@ import ScoreFeedback from './ScoreFeedback'
 import PhonemeCorrection from './PhonemeCorrection'
 import { CHAPTERS_BY_LEVEL } from '../../data/chaptersByLevel'
 import { buildLevelLadder, currentLevelId } from '../../lib/progressPath'
+import { buildSubLevelLadder, currentSubLevelIndex, annotateChaptersWithSubLevel } from '../../lib/subLevels'
+import { SubLevelBar } from '../shared/ModuleUI'
 import { resumeIndexForChapter } from '../../lib/continueTarget'
 import { useSpeechRecorder } from '../../hooks/useSpeechRecorder'
 import { loadProgress, saveAttempt, completedForModule, canStartChapter, recordChapterStart } from '../../lib/supabase'
@@ -75,10 +77,21 @@ export default function SpeakingPractice({ onBack, session }) {
     if (!userPickedLevel && progressLoaded) setLevel(currentLevelId(ladder))
   }, [progressLoaded, ladder, userPickedLevel])
 
-  const chapters = CHAPTERS_BY_LEVEL[level]?.[MODULE] || []
+  const chaptersByModuleForLevel = CHAPTERS_BY_LEVEL[level] || {}
+  const chapters = chaptersByModuleForLevel[MODULE] || []
+  // Finer-grained gating inside an unlocked CEFR level — same "finish
+  // everything before moving on" philosophy as the level ladder above,
+  // one tier down (see lib/subLevels.js).
+  const subLadder = useMemo(() => buildSubLevelLadder(progress, chaptersByModuleForLevel), [progress, level])
+  const unlockedSubIndex = currentSubLevelIndex(subLadder)
+  const chaptersWithLock = useMemo(
+    () => annotateChaptersWithSubLevel(chapters, unlockedSubIndex),
+    [chapters, unlockedSubIndex]
+  )
   const currentPhrase = activeChapter?.phrases[phraseIndex]
 
   const handleSelectChapter = useCallback((chapter) => {
+    if (chapter.locked) return
     if (!canStartChapter(session, MODULE, chapter.id)) {
       setGatedChapter(chapter)
       return
@@ -187,8 +200,9 @@ export default function SpeakingPractice({ onBack, session }) {
         />
         <div style={{ marginTop: 20 }}>
           <LevelSelector current={level} onSelect={(id) => { setUserPickedLevel(true); setLevel(id) }} availableLevels={availableLevels} ladder={ladder} />
+          <SubLevelBar level={level} subLadder={subLadder} accent="var(--terracotta-deep)" />
           <ChapterList
-            chapters={chapters}
+            chapters={chaptersWithLock}
             completedPhrases={completedForModule(progress, MODULE)}
             onSelectChapter={handleSelectChapter}
           />
@@ -279,7 +293,7 @@ export default function SpeakingPractice({ onBack, session }) {
 
 const styles = {
   page: {
-    maxWidth: 480,
+    maxWidth: 640,
     margin: '0 auto',
     padding: '24px 20px 60px',
     position: 'relative',

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { loadLeaderboard } from '../lib/supabase'
+import { onProgressChange } from '../lib/progressBus'
 
 // Global, all-learners ranking by total phrases completed (not points —
 // simplest metric that's fair across levels and needs no new scoring
@@ -14,10 +15,16 @@ export default function Leaderboard({ session }) {
 
   useEffect(() => {
     let cancelled = false
-    loadLeaderboard(20)
+    const load = () => loadLeaderboard(20)
       .then(data => { if (!cancelled) setRows(data) })
       .catch(() => { if (!cancelled) setError(true) })
-    return () => { cancelled = true }
+    load()
+    // Live-updates a completion made while this tab is already open (e.g.
+    // finishing a chapter in another browser tab, or — once cross-tab
+    // sync exists — another device); a normal tab switch already
+    // remounts this component and refetches on its own.
+    const unsubscribe = onProgressChange(load)
+    return () => { cancelled = true; unsubscribe() }
   }, [])
 
   const myId = session?.user?.id
@@ -58,7 +65,7 @@ export default function Leaderboard({ session }) {
 
 const styles = {
   page: {
-    maxWidth: 480,
+    maxWidth: 640,
     margin: '0 auto',
     padding: '28px 20px 24px',
   },

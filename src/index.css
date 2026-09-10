@@ -1,22 +1,29 @@
 :root {
-  /* "Midnight & coral" — confirmed direction, replacing the earlier
-     cream/terracotta palette. Token NAMES are kept as-is (cream, white,
-     ink, ...) so every existing component reskins automatically through
-     these variables; only the resolved colors changed. --white is now
-     the dark elevated-surface color (cards, chips) rather than literal
-     white — read it as "surface", not "white". */
-  --cream: #14172b;
-  --cream-deep: #1e2240;
-  --ink: #f4f1e8;
-  --ink-soft: #8b86ac;
-  --terracotta: #ff6b5b;
-  --terracotta-deep: #ff8a75;
-  --sage: #6fcf97;
-  --sage-deep: #4fae7a;
-  --gold: #f2c14e;
-  --line: rgba(255, 255, 255, 0.12);
-  --white: #1e2240;
-  --paper: #ffffff; /* literal white — Camille's eyes/teeth, never a surface bg */
+  /* "Clean dashboard" — confirmed direction, replacing "Vibrant dark".
+     Sajja pointed at a light, professional control-center UI (a
+     mission-tracker reference) and asked to adopt that look wholesale —
+     this is a full light/dark flip, not a hue tweak. Token NAMES are
+     kept as-is (cream, white, ink, ...) so every existing component
+     reskins automatically through these variables; only the resolved
+     colors changed. Pale lavender-white page background with pure-white
+     floating cards (a soft border alone separates card from page, no
+     heavy shadows needed), dark charcoal text, and three accent colors
+     carried over from the reference: teal (current/primary), amber-gold
+     (available/highlight), and green (success/secondary) — muted grey
+     for anything locked. --white is now literally white — the elevated
+     card/surface color the reference uses everywhere. */
+  --cream: #f5f4fb;
+  --cream-deep: #ffffff;
+  --ink: #1f1b2e;
+  --ink-soft: #726b82;
+  --terracotta: #2a9d8f;
+  --terracotta-deep: #21857a;
+  --sage: #4caf50;
+  --sage-deep: #388e3c;
+  --gold: #d9a441;
+  --line: rgba(31, 27, 46, 0.12);
+  --white: #ffffff;
+  --paper: #ffffff; /* literal white — Camille's eyes/teeth, same value as --white on this light theme, fine since they're different elements */
 
   /* Camille — illustrated figure palette */
   --skin: #e7b58c;
@@ -63,4 +70,45 @@ button {
 
 @media (prefers-reduced-motion: reduce) {
   * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
+
+/* ── Responsive app shell ──────────────────────────────────────────────
+   Mobile (<900px): unchanged single-column layout with BottomNav — the
+   inline styles in App.jsx/each page component already handle that, so
+   nothing below applies yet. Sidebar/SummaryPanel are rendered in the DOM
+   at every width but stay display:none until their breakpoint, which is
+   what lets App.jsx avoid two different render branches for mobile vs
+   desktop. */
+.app-sidebar,
+.app-summary {
+  display: none;
+}
+
+.bottom-nav {
+  display: flex;
+}
+
+@media (min-width: 900px) {
+  .app-shell {
+    display: grid;
+    grid-template-columns: 240px minmax(0, 720px);
+    justify-content: center;
+    column-gap: 32px;
+    align-items: start;
+  }
+  .app-sidebar {
+    display: flex;
+  }
+  .bottom-nav {
+    display: none;
+  }
+}
+
+@media (min-width: 1280px) {
+  .app-shell {
+    grid-template-columns: 240px minmax(0, 720px) 300px;
+  }
+  .app-summary {
+    display: flex;
+  }
 }
